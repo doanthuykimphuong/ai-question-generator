@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ôn tập Lịch sử 12 — AI Quiz</title>
+
+<!-- Minimal reset & Google font -->
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f4f6fb; --card:#fff; --accent:#9c2b31; --accent-2:#ffb84d;
+  --success:#22c55e; --danger:#ef4444; --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:"Be Vietnam Pro",system-ui,Segoe UI,Arial; background:var(--bg); color:#0f172a;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+.app {
+  max-width:980px; margin:36px auto; padding:20px;
+  display:grid; grid-template-columns:1fr 340px; gap:20px;
+}
+.header {
+  grid-column:1/-1; display:flex; justify-content:space-between; align-items:center;
+}
+.brand { display:flex; gap:12px; align-items:center; }
+.logo {
+  width:48px; height:48px; border-radius:10px; background:linear-gradient(135deg,var(--accent),#7f1d1d); display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;
+}
+.title h1{margin:0;font-size:20px}
+.title p{margin:0;color:var(--muted);font-size:13px}
+
+/* left (quiz) */
+.card {
+  background:var(--card); border-radius:14px; padding:20px; box-shadow:0 6px 24px rgba(15,23,42,0.06);
+  min-height:420px; display:flex; flex-direction:column;
+}
+.controls { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.control { flex:1; min-width:120px; }
+.btn { background:var(--accent); color:white; padding:12px 18px; border-radius:12px; border:none; cursor:pointer; font-weight:600; }
+.btn.secondary { background:#fff; color:var(--accent); border:1px solid rgba(0,0,0,0.06); }
+.small { padding:8px 12px; border-radius:10px; font-weight:600; }
+
+/* question area */
+.quiz-stage { flex:1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; padding:6px; }
+.slide {
+  width:100%; transform:translateX(0); transition:transform .45s cubic-bezier(.2,.9,.3,1);
+  display:flex; flex-direction:column; gap:18px;
+}
+.slide-enter { transform:translateX(100%); }
+.slide-exit { transform:translateX(-100%); }
+
+.q-header { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.q-number { font-weight:700; color:var(--muted); }
+.q-text { font-size:18px; line-height:1.4; font-weight:600; color:#0f172a; }
+
+/* options */
+.options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.option {
+  background:#fff; padding:12px; border-radius:12px; cursor:pointer; border:1px solid #eef2ff;
+  display:flex; gap:10px; align-items:flex-start; transition:all .18s;
+}
+.option:hover{transform:translateY(-3px)}
+.option .tag{width:36px;height:36px;border-radius:8px;background:#f3f4f6;color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:700;}
+.option.correct{background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.25); color: #064e3b;}
+.option.wrong{background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2); color:#7f1d1d; opacity:1}
+
+.footer { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:12px;}
+.progress { height:8px; background:#eef2ff; border-radius:999px; overflow:hidden; flex:1; margin-right:10px;}
+.progress > i{ display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); width:0%; transition:width .4s;}
+
+/* right panel */
+.side { display:flex; flex-direction:column; gap:12px; }
+.card.small { padding:12px; }
+.score { font-size:36px; font-weight:800; color:var(--accent); }
+.list { display:flex; gap:8px; flex-wrap:wrap; }
+.pill { padding:8px 10px; background:#f8fafc; border-radius:10px; color:var(--muted); font-weight:600; }
+
+/* result modal simple */
+.result {
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,0.5); z-index:60;
+}
+.result .box { width:520px; padding:24px; border-radius:14px; background:#fff; text-align:center;}
+.result .box h2{margin:0 0 8px}
+.result.show { display:flex; }
+
+.help { font-size:13px; color:var(--muted); }
+
+@media (max-width:980px){
+  .app{ grid-template-columns:1fr; padding:14px}
+  .side{ order:2 }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">HS</div>
+      <div class="title">
+        <h1>Ôn tập Lịch sử 12</h1>
+        <p>Học cùng AI — Tạo câu hỏi tự động</p>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="small btn secondary" id="cfgBtn">API / Cấu hình</button>
+      <button id="startBtn" class="btn">Bắt Đầu</button>
+    </div>
+  </div>
+
+  <!-- QUIZ LEFT -->
+  <div class="card">
+    <div class="controls">
+      <div class="control">
+        <label style="font-weight:700;color:var(--muted);font-size:13px">Chủ đề</label>
+        <select id="topicSelect" style="padding:10px;border-radius:10px;">
+          <option value="Chiến dịch Điện Biên Phủ">Chiến dịch Điện Biên Phủ (1954)</option>
+          <option value="Hiệp định Genève">Hiệp định Genève 1954</option>
+          <option value="Tổng tiến công Tết Mậu Thân">Tổng tiến công và nổi dậy Tết Mậu Thân 1968</option>
+          <option value="Đại thắng 1975">Đại thắng mùa Xuân 1975</option>
+          <option value="Chủ đề tổng hợp">Tổng hợp Lịch sử 12</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label style="font-weight:700;color:var(--muted);font-size:13px">Số câu</label>
+        <select id="countSelect" style="padding:10px;border-radius:10px;">
+          <option value="5">5 câu</option>
+          <option value="10" selected>10 câu</option>
+          <option value="20">20 câu</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label style="font-weight:700;color:var(--muted);font-size:13px">Hình thức</label>
+        <select id="modeSelect" style="padding:10px;border-radius:10px;">
+          <option value="mcq">Trắc nghiệm (A/B/C/D)</option>
+          <option value="tf_group">Đúng / Sai nhóm (bối cảnh + 4 mệnh đề)</option>
+          <option value="mix" selected>Tổng hợp</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="quiz-stage">
+      <div id="slideContainer" class="slide" aria-live="polite">
+        <!-- content injected via JS -->
+        <div style="text-align:center;color:var(--muted)">
+          Nhấn <strong>Bắt Đầu</strong> để AI soạn đề theo chủ đề bạn chọn.
+          <div style="margin-top:8px" class="help">Bạn cần nhập API key trước (Cấu hình) nếu muốn gọi Gemini từ trang này.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+        <div class="q-number" id="progressText">0 / 0</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="prevBtn" class="small btn secondary" disabled>↶ Trước</button>
+        <button id="nextBtn" class="small btn secondary" disabled>Tiếp →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDE -->
+  <div class="side">
+    <div class="card small">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;color:var(--muted)">Điểm hiện tại</div>
+          <div class="score" id="scoreDisplay">0</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--muted)">Câu</div>
+          <div style="font-weight:700" id="curQNum">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card small">
+      <div style="font-weight:700;color:var(--muted);margin-bottom:8px">Thông tin</div>
+      <div class="list">
+        <div class="pill" id="modeBadge">Mode: Tổng hợp</div>
+        <div class="pill" id="topicBadge">Chủ đề: Tổng hợp</div>
+        <div class="pill" id="countBadge">Số câu: 10</div>
+      </div>
+    </div>
+
+    <div class="card small">
+      <div style="font-weight:700;color:var(--muted);margin-bottom:8px">Ghi chú</div>
+      <div style="font-size:13px;color:var(--muted)">
+        - Ứng dụng gọi AI để tạo câu hỏi. <br/>
+        - Để không lộ API key, sử dụng proxy server (mình có ví dụ Netlify Function bên dưới).
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Result modal -->
+<div id="resultModal" class="result" role="dialog" aria-modal="true">
+  <div class="box">
+    <h2>Kết thúc bài làm</h2>
+    <p id="finalText" style="margin-bottom:16px"></p>
+    <button id="retryBtn" class="btn">Làm lại</button>
+  </div>
+</div>
+
+<!-- API CONFIG PANEL (simple) -->
+<div id="cfgPanel" style="position:fixed;right:18px;bottom:18px;background:#fff;padding:12px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.12);display:none;z-index:80">
+  <div style="font-weight:700;margin-bottom:6px">Cấu hình API (thử nghiệm)</div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:6px">API Key Gemini (tạm thời) hoặc Proxy URL</div>
+  <input id="apiKeyInput" placeholder="GEMINI_API_KEY or leave empty if using proxy" style="width:360px;padding:8px;border-radius:8px;border:1px solid #e6eefc" />
+  <div style="margin-top:8px">
+    <input id="proxyToggle" type="checkbox" /> <label for="proxyToggle" style="font-size:13px">Use proxy endpoint</label>
+  </div>
+  <input id="proxyUrlInput" placeholder="https://your-proxy.example/fn/gemini" style="width:360px;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #eee" />
+  <div style="display:flex;gap:8px;margin-top:8px">
+    <button id="saveCfg" class="btn small">Lưu</button>
+    <button id="closeCfg" class="small btn secondary">Đóng</button>
+  </div>
+</div>
+
+<script>
+/*
+  index.html
+  - Gọi Gemini (hoặc proxy) để sinh JSON array câu hỏi theo master prompt
+  - Render từng câu, xử lý chọn đáp án, hiệu ứng slide, tính điểm
+  - WARNING: Exposing API key in client code is insecure for production.
+*/
+
+// App state
+let state = {
+  apiKey: "",      // if direct
+  proxyUrl: "",    // if using proxy
+  useProxy: false,
+  questions: [],   // array of question objects
+  current: 0,
+  score: 0,
+  count: 10,
+  mode: "mix",
+  topic: "Tổng hợp Lịch sử 12"
+};
+
+// DOM refs
+const slideContainer = document.getElementById('slideContainer');
+const startBtn = document.getElementById('startBtn');
+const prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
+const progressBar = document.getElementById('progressBar'), progressText = document.getElementById('progressText');
+const scoreDisplay = document.getElementById('scoreDisplay'), curQNum = document.getElementById('curQNum');
+const countSelect = document.getElementById('countSelect'), modeSelect = document.getElementById('modeSelect'), topicSelect = document.getElementById('topicSelect');
+const modeBadge = document.getElementById('modeBadge'), topicBadge = document.getElementById('topicBadge'), countBadge = document.getElementById('countBadge');
+const resultModal = document.getElementById('resultModal'), finalText = document.getElementById('finalText');
+const retryBtn = document.getElementById('retryBtn');
+const cfgBtn = document.getElementById('cfgBtn'), cfgPanel = document.getElementById('cfgPanel'), closeCfg = document.getElementById('closeCfg'), saveCfg = document.getElementById('saveCfg');
+const apiKeyInput = document.getElementById('apiKeyInput'), proxyUrlInput = document.getElementById('proxyUrlInput'), proxyToggle = document.getElementById('proxyToggle');
+
+// Update badges
+function updateBadges(){
+  modeBadge.textContent = "Mode: " + (state.mode === 'mix' ? 'Tổng hợp' : state.mode);
+  topicBadge.textContent = "Chủ đề: " + state.topic;
+  countBadge.textContent = "Số câu: " + state.count;
+}
+
+// slide helper
+function renderPlaceholder(){
+  slideContainer.innerHTML = `<div style="text-align:center;color:var(--muted)">Nhấn Bắt Đầu để AI soạn đề.</div>`;
+}
+
+// utilities
+function setProgress() {
+  const total = state.questions.length || state.count;
+  const cur = Math.min(state.current + 1, total);
+  const pct = total ? Math.round((cur / total) * 100) : 0;
+  progressBar.style.width = pct + '%';
+  progressText.textContent = `${cur} / ${total}`;
+  curQNum.textContent = cur;
+}
+function markScore(delta){ state.score += delta; scoreDisplay.textContent = state.score; }
+
+// slide render
+function showQuestion(index, animation = true){
+  if(!state.questions.length) return;
+  state.current = Math.max(0, Math.min(index, state.questions.length - 1));
+  setProgress();
+  const q = state.questions[state.current];
+  // build slide
+  const container = document.createElement('div');
+  container.className = 'slide';
+  // header
+  const header = document.createElement('div'); header.className = 'q-header';
+  const qnum = document.createElement('div'); qnum.className = 'q-number'; qnum.textContent = `Câu ${state.current+1} / ${state.questions.length}`;
+  const type = document.createElement('div'); type.style.color = 'var(--muted)'; type.style.fontWeight = 700; type.textContent = q.type === 'mcq' ? 'Trắc nghiệm' : 'Đúng/Sai (nhóm)';
+  header.appendChild(qnum); header.appendChild(type);
+  // question text
+  const qtext = document.createElement('div'); qtext.className = 'q-text'; qtext.innerHTML = q.type === 'mcq' ? q.question : (q.context || '') ;
+  // options area
+  const optionsWrap = document.createElement('div'); optionsWrap.className = 'options';
+  // For mcq
+  if(q.type === 'mcq'){
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('div'); btn.className = 'option'; btn.setAttribute('data-index', i);
+      btn.innerHTML = `<div class="tag">${String.fromCharCode(65+i)}</div><div style="flex:1"><div style="font-weight:700">${opt}</div></div>`;
+      btn.onclick = () => handleMcqSelect(btn, i);
+      optionsWrap.appendChild(btn);
+    });
+  } else if(q.type === 'tf_group'){
+    // show context at top then 4 rows each with Đ/S
+    if(q.context){
+      // context already in qtext; but for TF group, show subquestions as rows
+    }
+    q.subQuestions.forEach((sub, i) => {
+      const row = document.createElement('div'); row.className = 'option';
+      row.style.gridColumn = '1 / -1'; // full width
+      row.innerHTML = `<div class="tag">${i+1}</div><div style="flex:1"><div style="font-weight:700">${sub.text}</div></div>
+        <div style="display:flex;gap:6px"><button class="small btn secondary" data-val="true">Đ</button><button class="small btn secondary" data-val="false">S</button></div>`;
+      const btns = row.querySelectorAll('button');
+      btns[0].onclick = () => handleTfSelect(row, i, true, btns);
+      btns[1].onclick = () => handleTfSelect(row, i, false, btns);
+      optionsWrap.appendChild(row);
+    });
+  }
+
+  container.appendChild(header);
+  container.appendChild(qtext);
+  container.appendChild(optionsWrap);
+
+  // animate replace
+  slideContainer.innerHTML = ''; // quick replace for simplicity
+  slideContainer.appendChild(container);
+
+  // enable/disable navigation
+  prevBtn.disabled = state.current === 0;
+  nextBtn.disabled = state.current >= state.questions.length - 1;
+}
+
+// handle MCQ selection
+function handleMcqSelect(elem, idx){
+  const q = state.questions[state.current];
+  if(elem.classList.contains('disabled')) return;
+  // disable others
+  const all = document.querySelectorAll('.option'); all.forEach(a=>a.classList.add('disabled'));
+  // mark correct/incorrect visually
+  const correctIdx = q.correctIndex;
+  if(idx === correctIdx){
+    elem.classList.add('correct');
+    markScore(1);
+  } else {
+    elem.classList.add('wrong');
+    // highlight correct
+    const options = document.querySelectorAll('.option');
+    const correctElem = options[correctIdx];
+    if(correctElem) correctElem.classList.add('correct');
+  }
+  // move next after short delay
+  setTimeout(() => {
+    if(state.current < state.questions.length - 1) showQuestion(state.current + 1);
+    else finishQuiz();
+  }, 900);
+}
+
+// handle TF group selection (choose Đ/S for one row)
+function handleTfSelect(row, rowIdx, val, btns){
+  const q = state.questions[state.current];
+  if(!q._tfAnswers) q._tfAnswers = new Array(q.subQuestions.length).fill(null);
+  q._tfAnswers[rowIdx] = val;
+  // mark selection visually
+  btns.forEach(b => b.classList.remove('btn','secondary','selected'));
+  btns.forEach(b => b.classList.add('small','btn','secondary'));
+  // highlight chosen
+  btns.forEach(b => {
+    if((b.getAttribute('data-val') === 'true') === !!val) {
+      b.style.background = 'linear-gradient(90deg,var(--accent),var(--accent-2))';
+      b.style.color = '#fff';
+    } else {
+      b.style.background = '';
+      b.style.color = '';
+    }
+  });
+  // if all rows answered, grade
+  if(q._tfAnswers.every(x => x !== null)){
+    // grade
+    let correctCount = 0;
+    q.subQuestions.forEach((s,i) => { if( (s.answer === true && q._tfAnswers[i]===true) || (s.answer === false && q._tfAnswers[i]===false) ) correctCount++; });
+    if(correctCount === q.subQuestions.length) markScore(1);
+    // visually mark each row - show correct/incorrect
+    const rows = document.querySelectorAll('.option');
+    q.subQuestions.forEach((s,i) => {
+      const rowEl = rows[i];
+      const chosen = q._tfAnswers[i];
+      // find buttons inside row
+      const btns = rowEl.querySelectorAll('button');
+      btns.forEach(b=>{
+        const bval = b.getAttribute('data-val') === 'true';
+        if(s.answer === bval){
+          b.style.background = 'var(--success)'; b.style.color = '#fff';
+        } else if(bval === chosen){
+          b.style.background = 'var(--danger)'; b.style.color = '#fff';
+        } else {
+          b.style.opacity = 0.7;
+        }
+      });
+    });
+    // move next
+    setTimeout(() => {
+      if(state.current < state.questions.length - 1) showQuestion(state.current + 1);
+      else finishQuiz();
+    }, 900);
+  }
+}
+
+// finish quiz
+function finishQuiz(){
+  finalText.innerHTML = `Bạn được <strong>${state.score}</strong> điểm trên tổng <strong>${state.questions.length}</strong> câu.`;
+  resultModal.classList.add('show');
+  resultModal.style.display = 'flex';
+  retryBtn.onclick = () => { resultModal.classList.remove('show'); resultModal.style.display='none'; resetApp(); };
+}
+
+// reset
+function resetApp(){
+  state.questions = []; state.current = 0; state.score = 0;
+  scoreDisplay.textContent = '0'; progressBar.style.width = '0%'; progressText.textContent = '0 / 0';
+  renderPlaceholder();
+  prevBtn.disabled = true; nextBtn.disabled = true;
+}
+
+// next/prev handlers
+prevBtn.addEventListener('click', ()=> showQuestion(state.current - 1));
+nextBtn.addEventListener('click', ()=> showQuestion(state.current + 1));
+
+// cfg panel
+cfgBtn.addEventListener('click', ()=> cfgPanel.style.display = 'block');
+closeCfg.addEventListener('click', ()=> cfgPanel.style.display = 'none');
+saveCfg.addEventListener('click', ()=>{
+  state.apiKey = apiKeyInput.value.trim();
+  state.useProxy = proxyToggle.checked;
+  state.proxyUrl = proxyUrlInput.value.trim();
+  cfgPanel.style.display = 'none';
+  alert('Đã lưu cấu hình (thử nghiệm). Lưu ý: không đặt API key trong trang công khai!');
+});
+
+// start flow
+startBtn.addEventListener('click', async ()=>{
+  // update state from controls
+  state.count = parseInt(countSelect.value,10);
+  state.mode = modeSelect.value;
+  state.topic = topicSelect.value;
+  updateBadges();
+  resetApp(); // clear
+  // call API to generate questions
+  startBtn.disabled = true; startBtn.textContent = 'Đang soạn đề...';
+  try {
+    const qs = await generateQuestionsFromAI({topic: state.topic, count: state.count, mode: state.mode});
+    if(!qs || !Array.isArray(qs) || qs.length===0) throw new Error('AI trả về dữ liệu không hợp lệ');
+    state.questions = qs;
+    startBtn.textContent = 'Bắt Đầu';
+    startBtn.disabled = false;
+    state.current = 0; state.score = 0;
+    showQuestion(0);
+  } catch(err){
+    alert('Lỗi khi tạo đề: ' + (err.message || err));
+    startBtn.disabled = false; startBtn.textContent = 'Bắt Đầu';
+    renderPlaceholder();
+  }
+});
+
+// MASTER PROMPT (guideline) -> ask AI to return JSON array
+function buildPrompt({topic, count, mode}){
+  return `
+Bạn là một Giáo viên Lịch sử Việt Nam chuyên nghiệp. Tạo ${count} câu hỏi ôn tập cho chủ đề: "${topic}" (dành cho Lớp 12).
+Yêu cầu:
+- Xuất dạng JSON array.
+- Mỗi phần tử là object với cấu trúc tùy theo type:
+  * Với câu trắc nghiệm (type: "mcq"):
+    { "type":"mcq", "level":"nhan_biet|thong_hieu|van_dung|van_dung_cao", "question":"...", "options":["...","...","...","..."], "correctIndex":0, "explanation":"..."}
+  * Với câu đúng/sai nhóm (type: "tf_group"):
+    { "type":"tf_group", "level":"...", "context":"bối cảnh ngắn", "subQuestions":[{"text":"...","answer":true}, ... (4 mệnh đề)], "explanation":"..." }
+- Nếu mode == 'mcq' chỉ tạo mcq; nếu 'tf_group' chỉ tf_group; nếu 'mix' tạo kết hợp (khoảng 70% mcq, 30% tf_group).
+- Tất cả dữ liệu phải chính xác, phù hợp SGK Lịch sử Việt Nam. Không thêm chú giải ngoài JSON.
+- Trả về JSON hợp lệ, KHÔNG kèm văn bản khác.
+`;
+}
+
+// Call Gemini or proxy to generate questions
+async function generateQuestionsFromAI({topic, count, mode}){
+  const prompt = buildPrompt({topic,count,mode});
+  // If using proxy (recommended) -> POST { prompt: "..."}
+  if(state.useProxy && state.proxyUrl){
+    const res = await fetch(state.proxyUrl, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt})
+    });
+    if(!res.ok) throw new Error('Proxy error: ' + res.statusText);
+    const data = await res.json();
+    // Expect proxy returns JSON array directly
+    return data;
+  }
+
+  // Direct call to Gemini (client-side) - NOT recommended for production
+  if(!state.apiKey) throw new Error('Bạn chưa cấu hình API key (Settings).');
+
+  // NOTE: This example uses the older public endpoint structure used in examples.
+  // Replace model name and payload used below to match your Gemini product/API spec.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${state.apiKey}`;
+
+  const payload = {
+    systemInstruction: { parts: [{ text: "Bạn là một trợ lý tạo câu hỏi Lịch sử cho học sinh lớp 12, bám sát SGK." }]},
+    contents: [{ parts: [{ text: prompt }] }],
+    // request JSON back
+    generationConfig: { responseMimeType: "application/json" }
+  };
+
+  const resp = await fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+  });
+  if(!resp.ok) {
+    const txt = await resp.text();
+    throw new Error('Gemini API lỗi: ' + resp.status + ' ' + txt);
+  }
+  const json = await resp.json();
+  // In the Gemini response, the assistant's text might be in json.candidates[0].content.parts[0].text
+  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if(!text) throw new Error('Không nhận được nội dung từ Gemini.');
+  // The text should be JSON — parse it
+  try {
+    const parsed = JSON.parse(text);
+    // Validate structure minimally
+    if(!Array.isArray(parsed)) throw new Error('AI không trả về mảng JSON');
+    // Normalize types if needed
+    return parsed.map(item => {
+      if(item.type === 'mcq'){
+        // ensure options array, correctIndex numeric
+        return {
+          type:'mcq',
+          level: item.level || 'thong_hieu',
+          question: item.question || '',
+          options: item.options || [],
+          correctIndex: Number.isFinite(item.correctIndex) ? item.correctIndex : 0,
+          explanation: item.explanation || ''
+        };
+      } else if(item.type === 'tf_group'){
+        return {
+          type:'tf_group',
+          level: item.level || 'thong_hieu',
+          context: item.context || '',
+          subQuestions: item.subQuestions || [],
+          explanation: item.explanation || ''
+        };
+      } else {
+        // fallback: try to interpret as mcq
+        return item;
+      }
+    });
+  } catch(e){
+    throw new Error('Không parse được JSON trả về từ AI: ' + e.message);
+  }
+}
+
+// Initialize
+renderPlaceholder();
+updateBadges();
+
+// small UX: allow keyboard next
+document.addEventListener('keydown', (e)=> {
+  if(e.key === 'ArrowRight') nextBtn.click();
+  if(e.key === 'ArrowLeft') prevBtn.click();
+});
+
+</script>
+
+<!--
+  SECURITY & DEPLOY NOTE:
+  - Do NOT put your real API key into a public repo. Use a serverless proxy.
+  - Example Netlify Function (Node) shown below in comments to use as proxy.
+
+  Example Netlify function (serverless) -- create file: functions/gemini-proxy.js
+  -------------------------------------------------------
+  // const fetch = require('node-fetch');
+  exports.handler = async function(event, context) {
+    const body = JSON.parse(event.body || '{}');
+    const prompt = body.prompt || '';
+    const API_KEY = AIzaSyCgyfi1zfPrm3ir9V83MV_kaNtsmZ0psWk; // set in Netlify env
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+    const payload = {
+      systemInstruction: { parts: [{ text: "Bạn là trợ lý tạo câu hỏi Lịch sử cho học sinh lớp 12, bám sát SGK." }]},
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    };
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await r.text(); // forward raw text
+    return { statusCode: 200, body: data };
+  }
+  -------------------------------------------------------
+
+  - Deploy Netlify function and set environment variable GEMINI_API_KEY in Netlify dashboard.
+  - Then set proxyUrlInput in config to the Netlify function URL, check "Use proxy endpoint".
+  - This way the client never sees your real key.
+-->
+
+</body>
+</html>
