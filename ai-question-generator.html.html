@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>AI Question Generator – Lịch sử 12</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+}
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+h2 {
+    margin-top: 0;
+}
+label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+}
+select, button, textarea {
+    width: 100%;
+    margin-top: 5px;
+    padding: 10px;
+    font-size: 16px;
+}
+button {
+    background: #0066cc;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 25px;
+}
+button:hover {
+    background: #004999;
+}
+#output {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 6px;
+    background: #eef3ff;
+    white-space: pre-wrap;
+    font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h2>AI Generate Câu hỏi Lịch sử 12</h2>
+
+    <label>Chọn Loại Câu Hỏi</label>
+    <select id="questionType">
+        <option value="mcq">Trắc nghiệm A/B/C/D</option>
+        <option value="truefalse">Đúng – Sai (kèm bối cảnh)</option>
+    </select>
+
+    <label>Chủ đề</label>
+    <select id="topic">
+        <option value="Vietnam_45_54">Việt Nam 1945–1954</option>
+        <option value="Vietnam_55_75">Việt Nam 1955–1975</option>
+        <option value="VN_sau_1975">Việt Nam sau 1975</option>
+        <option value="TG_sau_1945">Thế giới sau 1945</option>
+    </select>
+
+    <label>Mức độ</label>
+    <select id="level">
+        <option value="nhanbiet">Nhận biết</option>
+        <option value="thonghieu">Thông hiểu</option>
+        <option value="vandung">Vận dụng</option>
+        <option value="vandungcao">Vận dụng cao</option>
+    </select>
+
+    <button onclick="generateQuestion()">Tạo câu hỏi</button>
+
+    <div id="output"></div>
+</div>
+
+<script>
+// DỮ LIỆU MẪU — Bạn có thể bổ sung về sau
+const DATA = {
+    Vietnam_45_54: {
+        context: [
+            "Năm 1954, chiến dịch Điện Biên Phủ diễn ra trong điều kiện Pháp xây dựng tập đoàn cứ điểm mạnh.",
+            "Giai đoạn 1946–1950 là thời kỳ Việt Nam vừa kháng chiến vừa kiến quốc, đối mặt nhiều khó khăn."
+        ],
+        mcq: [
+            {
+                question: "Ý nghĩa lớn nhất của chiến thắng Điện Biên Phủ năm 1954 là gì?",
+                A: "Mở ra thời kỳ xây dựng CNXH ở miền Bắc.",
+                B: "Buộc Pháp ký Hiệp định Giơnevơ chấm dứt chiến tranh.",
+                C: "Giải phóng toàn bộ miền Nam.",
+                D: "Khẳng định vai trò của Liên Xô.",
+                answer: "B"
+            },
+            {
+                question: "Chủ trương toàn quốc kháng chiến được Đảng đề ra trong văn kiện nào?",
+                A: "Chỉ thị Kháng chiến – Kiến quốc",
+                B: "Lời kêu gọi toàn quốc kháng chiến (19/12/1946)",
+                C: "Tuyên ngôn thành lập Đảng",
+                D: "Cương lĩnh chính trị 1930",
+                answer: "B"
+            }
+        ],
+        truefalse: [
+            {
+                context: "Trong bối cảnh thực dân Pháp tái xâm lược Việt Nam cuối năm 1946 và ta chủ động lựa chọn con đường kháng chiến.",
+                statements: [
+                    "Cuộc kháng chiến chống Pháp của nhân dân ta là cuộc chiến tranh giải phóng dân tộc.",
+                    "Chủ trương toàn quốc kháng chiến đã được chuẩn bị từ trước.",
+                    "Hiệp định Giơnevơ được ký ngay sau khi kháng chiến bắt đầu.",
+                    "Pháp tiến hành tái xâm lược nhằm khôi phục địa vị thống trị trước đây."
+                ],
+                answers: ["Đ", "Đ", "S", "Đ"]
+            }
+        ]
+    },
+
+    Vietnam_55_75: {
+        context: [
+            "Mỹ thực hiện chiến lược 'Chiến tranh đặc biệt' ở miền Nam giai đoạn 1961–1965.",
+            "Đại thắng mùa Xuân 1975 là kết quả tổng hợp của nhiều yếu tố."
+        ],
+        mcq: [
+            {
+                question: "Chiến thắng nào mở ra bước ngoặt căn bản trong kháng chiến chống Mỹ?",
+                A: "Điện Biên Phủ 1954",
+                B: "Tổng tiến công và nổi dậy Tết Mậu Thân 1968",
+                C: "Điện Biên Phủ trên không 1972",
+                D: "Phước Long 1975",
+                answer: "B"
+            }
+        ],
+        truefalse: [
+            {
+                context: "Trong bối cảnh Mỹ leo thang chiến tranh và tăng cường quân đội Sài Gòn.",
+                statements: [
+                    "‘Chiến tranh cục bộ’ do Mỹ tiến hành trực tiếp ở miền Nam.",
+                    "Mỹ đã áp dụng không kích miền Bắc từ năm 1964.",
+                    "Tết Mậu Thân 1968 làm lung lay ý chí xâm lược của Mỹ.",
+                    "Hiệp định Paris 1973 chấm dứt mọi can thiệp của Mỹ tại Việt Nam."
+                ],
+                answers: ["Đ", "Đ", "Đ", "S"]
+            }
+        ]
+    }
+};
+
+// TẠO CÂU HỎI
+function generateQuestion() {
+    const type = document.getElementById("questionType").value;
+    const topic = document.getElementById("topic").value;
+    const level = document.getElementById("level").value;
+    const box = document.getElementById("output");
+    
+    let source = DATA[topic];
+
+    if (!source) {
+        box.textContent = "Không có dữ liệu cho chủ đề này.";
+        return;
+    }
+
+    if (type === "mcq") {
+        let item = source.mcq[Math.floor(Math.random() * source.mcq.length)];
+        box.textContent =
+            "Mức độ: " + level.toUpperCase() + "\n\n" +
+            "Câu hỏi:\n" + item.question + "\n\n" +
+            "A. " + item.A + "\n" +
+            "B. " + item.B + "\n" +
+            "C. " + item.C + "\n" +
+            "D. " + item.D + "\n\n" +
+            "Đáp án: " + item.answer;
+    }
+
+    if (type === "truefalse") {
+        let item = source.truefalse[Math.floor(Math.random() * source.truefalse.length)];
+        let output = "Bối cảnh:\n" + item.context + "\n\n";
+        item.statements.forEach((s, i) => {
+            output += "Mệnh đề " + (i+1) + ": " + s + "\n";
+        });
+        output += "\nĐáp án: " + item.answers.join(", ");
+        box.textContent = output;
+    }
+}
+</script>
+
+</body>
+</html>
